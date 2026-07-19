@@ -56,4 +56,4 @@ Da die Daten rein lesend aus der Rendering-Engine des eigenen Chromium-Prozesses
 git clone [https://github.com/Tjorven-Liebe/wt-tactical-map.git](https://github.com/Tjorven-Liebe/wt-tactical-map.git)
 cd wt-tactical-map
 npm install
-npm start
+npm run electron
