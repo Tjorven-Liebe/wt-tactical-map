@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tactical Map</title>
+  <!-- Google Fonts for military/cyber HUD aesthetic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="hud-container">
+    <!-- Header/Status Bar -->
+    <header class="hud-header">
+      <div class="hud-title-group">
+        <span class="hud-glitch-text" data-text="WT-TACTICAL">WT-TACTICAL</span>
+        <span class="hud-subtitle">MAP & TELEMETRY SYSTEMS</span>
+      </div>
+      <div class="hud-mission-info">
+        <span class="info-label">MISSION:</span>
+        <span id="mission-name" class="info-value">LOADING...</span>
+      </div>
+      <div class="hud-status-group">
+        <span id="conn-ping" class="ping-indicator">-- ms</span>
+        <div id="status-indicator" class="status-dot offline"></div>
+        <span id="status-text" class="status-text">OFFLINE</span>
+      </div>
+    </header>
+
+    <!-- Main Grid Layout -->
+    <main class="hud-main">
+      <!-- Left Panel: Telemetry & Gauges -->
+      <section class="hud-panel left-panel">
+        <div class="panel-header">
+          <h2>WIDGETS</h2>
+          <div class="panel-header-line"></div>
+        </div>
+
+        <div class="panel-content sidebar-left drag-drop-zone" id="drop-zone-left">
+          <!-- Sub-Panel: Compass -->
+          <div class="hud-sub-panel" id="panel-compass" draggable="true">
+            <div class="sub-panel-header">
+              <h3>NAVIGATION COMPASS</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-compass">[-]</button>
+            </div>
+            <div class="sub-panel-content" style="padding: 0; overflow: hidden; position: relative;">
+              <canvas id="compass-canvas" style="width: 100%; height: 50px; display: block; background: rgba(5, 12, 22, 0.4); pointer-events: none;"></canvas>
+            </div>
+          </div>
+
+          <!-- Sub-Panel: Stats -->
+          <div class="hud-sub-panel" id="panel-stats" draggable="true">
+            <div class="sub-panel-header">
+              <h3>FLIGHT STATS</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-stats">[-]</button>
+            </div>
+            <div class="sub-panel-content">
+              <!-- Primary Telemetry Stats Grid -->
+              <div class="telemetry-grid">
+                <div class="tel-card" id="card-spd">
+                  <span class="card-label">SPD (IAS)</span>
+                  <div class="card-value-container">
+                    <span id="val-spd" class="card-value">0</span>
+                    <span class="card-unit">KM/H</span>
+                  </div>
+                </div>
+                <div class="tel-card" id="card-tas">
+                  <span class="card-label">SPD (TAS)</span>
+                  <div class="card-value-container">
+                    <span id="val-tas" class="card-value">0</span>
+                    <span class="card-unit">KM/H</span>
+                  </div>
+                </div>
+                <div class="tel-card" id="card-alt">
+                  <span class="card-label">ALT (MSL)</span>
+                  <div class="card-value-container">
+                    <span id="val-alt" class="card-value">0</span>
+                    <span class="card-unit">M</span>
+                  </div>
+                </div>
+                <div class="tel-card" id="card-climb">
+                  <span class="card-label">CLIMB</span>
+                  <div class="card-value-container">
+                    <span id="val-climb" class="card-value">0.0</span>
+                    <span class="card-unit">M/S</span>
+                  </div>
+                </div>
+                <div class="tel-card" id="card-thr">
+                  <span class="card-label">THR %</span>
+                  <div class="card-value-container">
+                    <span id="val-thr" class="card-value">0</span>
+                    <span class="card-unit">%</span>
+                  </div>
+                </div>
+                <div class="tel-card" id="card-gload">
+                  <span class="card-label">G-LOAD</span>
+                  <div class="card-value-container">
+                    <span id="val-gload" class="card-value">1.0</span>
+                    <span class="card-unit">G</span>
+                  </div>
+                </div>
+                <div class="tel-card" id="card-aoa">
+                  <span class="card-label">AOA</span>
+                  <div class="card-value-container">
+                    <span id="val-aoa" class="card-value">0.0</span>
+                    <span class="card-unit">°</span>
+                  </div>
+                </div>
+                <div class="tel-card" id="card-mach">
+                  <span class="card-label">MACH</span>
+                  <div class="card-value-container">
+                    <span id="val-mach" class="card-value">0.00</span>
+                    <span class="card-unit">M</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Panel: Gyro Horizon -->
+          <div class="hud-sub-panel" id="panel-gyro" draggable="true">
+            <div class="sub-panel-header">
+              <h3>ATTITUDE GYRO</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-gyro">[-]</button>
+            </div>
+            <div class="sub-panel-content">
+              <!-- Artificial Horizon Gyro -->
+              <div class="gyro-container">
+                <div class="gyro-bezel">
+                  <div class="gyro-scale">
+                    <svg viewBox="0 0 200 200" width="100%" height="100%">
+                      <!-- Static Reticle / Aircraft symbol -->
+                      <path d="M 40,100 L 80,100 L 90,110 L 100,100 L 110,110 L 120,100 L 160,100" fill="none"
+                        stroke="#ffb703" stroke-width="3" />
+                      <circle cx="100" cy="100" r="4" fill="#ffb703" />
+                    </svg>
+                  </div>
+                  <div id="gyro-horizon" class="gyro-horizon">
+                    <div class="sky"></div>
+                    <div class="ground"></div>
+                    <!-- Pitch lines overlay -->
+                    <div class="pitch-lines">
+                      <div class="pitch-line positive p30"><span>30</span></div>
+                      <div class="pitch-line positive p20"><span>20</span></div>
+                      <div class="pitch-line positive p10"><span>10</span></div>
+                      <div class="pitch-line p0"></div>
+                      <div class="pitch-line negative n10"><span>-10</span></div>
+                      <div class="pitch-line negative n20"><span>-20</span></div>
+                      <div class="pitch-line negative n30"><span>-30</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gyro-readouts">
+                  <div class="readout"><span class="lbl">PITCH:</span> <span id="val-pitch" class="val">0.0°</span>
+                  </div>
+                  <div class="readout"><span class="lbl">ROLL:</span> <span id="val-roll" class="val">0.0°</span></div>
+                  <div class="readout"><span class="lbl">HDG:</span> <span id="val-hdg" class="val">000°</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Panel: 3D Attitude Display -->
+          <div class="hud-sub-panel" id="panel-gyro3d" draggable="true">
+            <div class="sub-panel-header">
+              <h3>3D ATTITUDE DISPLAY</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-gyro3d">[-]</button>
+            </div>
+            <div class="sub-panel-content">
+              <!-- Canvas-based 3D horizon rendering -->
+              <div class="gyro-container">
+                <div class="gyro-bezel">
+                  <canvas id="canvas-gyro3d" width="320" height="320" style="display: block; width: 100%; height: 100%; background: transparent; pointer-events: none;"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Panel: Fuel Dial -->
+          <div class="hud-sub-panel" id="panel-fuel" draggable="true">
+            <div class="sub-panel-header">
+              <h3>FUEL INDICATOR</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-fuel">[-]</button>
+            </div>
+            <div class="sub-panel-content">
+              <!-- Fuel Gauge Card -->
+              <div class="fuel-gauge-card">
+                <div class="fuel-gauge-container">
+                  <svg viewBox="0 0 160 160" class="fuel-gauge-svg">
+                    <!-- Outer Bezel -->
+                    <circle cx="80" cy="80" r="76" class="gauge-bezel" />
+                    <!-- Dial Face -->
+                    <circle cx="80" cy="80" r="72" class="gauge-face" />
+
+                    <!-- Tick Marks -->
+                    <g class="gauge-ticks">
+                      <!-- Major ticks (0 to 6) at 210, 260, 310, 0, 50, 100, 150 degrees -->
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(0 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(50 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(100 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(150 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(210 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(260 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(310 80 80)" class="major-tick" />
+
+                      <!-- Minor ticks (every 10 degrees) -->
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(220 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(230 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(240 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(250 80 80)" class="minor-tick" />
+
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(270 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(280 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(290 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(300 80 80)" class="minor-tick" />
+
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(320 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(330 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(340 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(350 80 80)" class="minor-tick" />
+
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(10 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(20 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(30 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(40 80 80)" class="minor-tick" />
+
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(60 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(70 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(80 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(90 80 80)" class="minor-tick" />
+
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(110 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(120 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(130 80 80)" class="minor-tick" />
+                      <line x1="80" y1="12" x2="80" y2="16" transform="rotate(140 80 80)" class="minor-tick" />
+                    </g>
+
+                    <!-- Scale Numbers -->
+                    <text x="36" y="116" class="gauge-label-num">0</text>
+                    <text x="24" y="86" class="gauge-label-num">1</text>
+                    <text x="34" y="56" class="gauge-label-num">2</text>
+                    <text x="56" y="38" class="gauge-label-num">3</text>
+                    <text x="96" y="38" class="gauge-label-num">4</text>
+                    <text x="124" y="56" class="gauge-label-num">5</text>
+                    <text x="124" y="116" class="gauge-label-num">6</text>
+
+                    <!-- Central Texts -->
+                    <text x="80" y="66" class="gauge-text-title">FUEL</text>
+                    <text x="80" y="78" class="gauge-text-title">QUANTITY</text>
+                    <text x="80" y="132" class="gauge-text-sub">LBS x 1000</text>
+
+                    <!-- Center Pin & Needle -->
+                    <g id="fuel-needle-group"
+                      style="transform-origin: 80px 80px; transform: rotate(210deg); transition: transform 0.5s ease-out;">
+                      <polygon points="77,80 80,20 83,80" class="gauge-needle" />
+                      <circle cx="80" cy="80" r="7" class="gauge-cap" />
+                      <circle cx="80" cy="80" r="2.5" fill="#000" />
+                    </g>
+                  </svg>
+                </div>
+                <div class="fuel-readout-digital">
+                  <span id="val-fuel-digital-lbs">0 LBS</span>
+                  <span id="val-fuel-digital-kg">0 KG (0%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Panel: System Hydraulics -->
+          <div class="hud-sub-panel" id="panel-mech" draggable="true">
+            <div class="sub-panel-header">
+              <h3>SYSTEM HYDRAULICS</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-mech">[-]</button>
+            </div>
+            <div class="sub-panel-content">
+              <!-- Mechanical States -->
+              <div class="mechanics-panel">
+                <div class="mech-indicator" id="mech-gear">
+                  <div class="indicator-glow"></div>
+                  <span class="mech-name">GEAR</span>
+                  <span id="val-gear" class="mech-val">RETRACTED</span>
+                </div>
+                <div class="mech-indicator" id="mech-flaps">
+                  <div class="indicator-glow"></div>
+                  <span class="mech-name">FLAPS</span>
+                  <span id="val-flaps" class="mech-val">UP</span>
+                </div>
+                <div class="mech-indicator" id="mech-airbrake">
+                  <div class="indicator-glow"></div>
+                  <span class="mech-name">AIRBRAKE</span>
+                  <span id="val-airbrake" class="mech-val">RETRACTED</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Panel: Engine status -->
+          <div class="hud-sub-panel" id="panel-engine" draggable="true">
+            <div class="sub-panel-header">
+              <h3>ENGINE TELEMETRY</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-engine">[-]</button>
+            </div>
+            <div class="sub-panel-content">
+              <!-- Engine Status -->
+              <div class="engine-panel">
+                <div class="engine-row" id="row-rpm">
+                  <span class="engine-lbl">RPM</span>
+                  <div class="bar-container">
+                    <div id="bar-rpm" class="bar-fill" style="width: 0%"></div>
+                  </div>
+                  <span id="val-rpm" class="engine-val">0</span>
+                </div>
+                <div class="engine-row" id="row-oil">
+                  <span class="engine-lbl">OIL TEMP</span>
+                  <div class="bar-container">
+                    <div id="bar-oil" class="bar-fill" style="width: 0%"></div>
+                  </div>
+                  <span id="val-oil" class="engine-val">0 °C</span>
+                </div>
+                <div class="engine-row" id="row-water">
+                  <span class="engine-lbl">H2O TEMP</span>
+                  <div class="bar-container">
+                    <div id="bar-water" class="bar-fill" style="width: 0%"></div>
+                  </div>
+                  <span id="val-water" class="engine-val">0 °C</span>
+                </div>
+                <div class="engine-row" id="row-fuel">
+                  <span class="engine-lbl">FUEL</span>
+                  <div class="bar-container">
+                    <div id="bar-fuel" class="bar-fill" style="width: 0%"></div>
+                  </div>
+                  <span id="val-fuel" class="engine-val">0 kg (0%)</span>
+                </div>
+              </div>
+          </div>
+
+          <!-- Sub-Panel: Radar state widget -->
+          <div class="hud-sub-panel" id="panel-radar" draggable="true">
+            <div class="sub-panel-header">
+              <h3>RADAR TELEMETRY</h3>
+              <button class="panel-toggle-btn" id="btn-toggle-radar">[-]</button>
+            </div>
+            <div class="sub-panel-content">
+              <div class="radar-panel" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 240, 255, 0.1); padding-bottom: 4px;">
+                  <span class="engine-lbl" style="font-size: 10px;">RADAR LINK</span>
+                  <span id="radar-val-active" style="font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: var(--color-text-dim);">STANDBY</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 240, 255, 0.1); padding-bottom: 4px;">
+                  <span class="engine-lbl" style="font-size: 10px;">SCAN MODE</span>
+                  <span id="radar-val-mode" style="font-family: var(--font-mono); font-size: 10px; color: var(--color-text-main);">SEARCH</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 240, 255, 0.1); padding-bottom: 4px;">
+                  <span class="engine-lbl" style="font-size: 10px;">SCAN RANGE</span>
+                  <span id="radar-val-range" style="font-family: var(--font-mono); font-size: 10px; color: var(--color-text-main);">-- km</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span class="engine-lbl" style="font-size: 9px; color: var(--color-text-dim);">RADAR SCOPE SWEEP</span>
+                  <div class="bar-container" style="height: 6px; background: rgba(0, 240, 255, 0.05); position: relative; overflow: hidden; border-radius: 3px;">
+                    <div id="radar-sweep-bar" class="bar-fill" style="width: 0%; height: 100%; transition: width 0.1s linear;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Map & Combat Logs -->
+      <div class="right-column-container drag-drop-zone" id="drop-zone-right">
+        <!-- Right Panel: Map Canvas & Controls -->
+        <section class="hud-panel map-panel" id="panel-map">
+          <div class="panel-header">
+            <h2>TACTICAL MAP DISP</h2>
+            <div class="panel-header-line"></div>
+            <div class="map-controls-inline">
+              <button id="btn-zoom-in" class="hud-btn" title="Zoom In">+</button>
+              <button id="btn-zoom-out" class="hud-btn" title="Zoom Out">-</button>
+              <button id="btn-zoom-reset" class="hud-btn" title="Reset View">RESET</button>
+              <button id="btn-autocenter" class="hud-btn active" title="Toggle Auto-Center on Player">CENTER:
+                ON</button>
+              <button id="btn-fullscreen" class="hud-btn" title="Toggle Fullscreen">FULLSCREEN</button>
+            </div>
+          </div>
+
+          <div class="panel-content map-wrapper">
+            <!-- Canvas element -->
+            <div class="canvas-container">
+              <div id="threat-warning-banner" class="threat-banner hidden">
+                <span class="warning-icon">⚠</span>
+                <span class="warning-text">COLLISION ALERT: ENEMY AIRCRAFT [1.8 KM]</span>
+              </div>
+              <canvas id="map-canvas" width="600" height="600"></canvas>
+
+              <!-- Mini HUD Overlay (Active in Fullscreen Mode) -->
+              <div class="map-hud-overlay">
+                <!-- Mini Attitude Gyro -->
+                <div class="mini-hud-element" title="Attitude Gyro">
+                  <div class="gyro-bezel mini-gyro">
+                    <div id="mini-gyro-horizon" class="gyro-horizon">
+                      <div class="sky"></div>
+                      <div class="ground"></div>
+                    </div>
+                    <div class="gyro-scale mini-scale">
+                      <svg viewBox="0 0 200 200" width="100%" height="100%">
+                        <path d="M 40,100 L 80,100 L 90,110 L 100,100 L 110,110 L 120,100 L 160,100" fill="none"
+                          stroke="#ffb703" stroke-width="4" />
+                        <circle cx="100" cy="100" r="4" fill="#ffb703" />
+                      </svg>
+                    </div>
+                    <div class="mini-gyro-values">
+                      <span id="mini-val-hdg">000°</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Mini Fuel Quantity Dial -->
+                <div class="mini-hud-element" title="Fuel Quantity">
+                  <svg viewBox="0 0 160 160" width="90" height="90">
+                    <circle cx="80" cy="80" r="72" class="gauge-face" style="fill: rgba(3, 7, 13, 0.6);" />
+                    <!-- Minimal Ticks -->
+                    <g class="gauge-ticks">
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(0 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(50 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(100 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(150 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(210 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(260 80 80)" class="major-tick" />
+                      <line x1="80" y1="12" x2="80" y2="20" transform="rotate(310 80 80)" class="major-tick" />
+                    </g>
+                    <!-- Needle -->
+                    <g id="mini-fuel-needle-group"
+                      style="transform-origin: 80px 80px; transform: rotate(210deg); transition: transform 0.5s ease-out;">
+                      <polygon points="77,80 80,20 83,80" class="gauge-needle" />
+                      <circle cx="80" cy="80" r="7" class="gauge-cap" />
+                    </g>
+                    <text x="80" y="115" class="gauge-text-title"
+                      style="font-size: 14px; font-weight: bold; fill: #00ffc4;">FUEL</text>
+                  </svg>
+                </div>
+              </div>
+
+              <div id="offline-overlay" class="offline-overlay">
+                <div class="glitch-icon">⚠</div>
+                <span class="overlay-title">NO GAME CLIENT DETECTED</span>
+                <span class="overlay-desc">Launch War Thunder and enter a battle or test flight to stream
+                  telemetry.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footnote Controls -->
+          <footer class="map-footer-controls">
+            <div class="toggle-group">
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-grid" checked>
+                <span class="checkmark"></span>
+                TACTICAL GRID
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-trails" checked>
+                <span class="checkmark"></span>
+                FLIGHT PATH TRAILS
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-names" checked>
+                <span class="checkmark"></span>
+                UNIT TAGS
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-markers" checked>
+                <span class="checkmark"></span>
+                UNIT MARKERS
+              </label>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <button id="btn-toggle-all" class="hud-btn" style="min-width: 75px;">HIDE ALL</button>
+              <div class="target-type-toggles" style="display: flex; gap: 6px;">
+                <button id="btn-toggle-type-air" class="hud-btn active" title="Toggle Air Targets [Alt+1]" style="padding: 4px 8px; font-size: 10px; display: flex; align-items: center; gap: 4px;">
+                  <span>✈</span> AIR
+                </button>
+                <button id="btn-toggle-type-ground" class="hud-btn active" title="Toggle Ground Targets [Alt+2]" style="padding: 4px 8px; font-size: 10px; display: flex; align-items: center; gap: 4px;">
+                  <span>⛨</span> GROUND
+                </button>
+                <button id="btn-toggle-type-naval" class="hud-btn active" title="Toggle Naval Targets [Alt+3]" style="padding: 4px 8px; font-size: 10px; display: flex; align-items: center; gap: 4px;">
+                  <span>⚓</span> NAVAL
+                </button>
+                <button id="btn-toggle-type-bases" class="hud-btn active" title="Toggle Bases & Zones [Alt+4]" style="padding: 4px 8px; font-size: 10px; display: flex; align-items: center; gap: 4px;">
+                  <span>⌖</span> BASES
+                </button>
+              </div>
+            </div>
+          </footer>
+        </section>
+
+        <!-- Bottom Panel: Combat Event Log -->
+        <section class="hud-panel combat-panel" id="panel-combat" draggable="true">
+          <div class="panel-header">
+            <h2>TACTICAL COMBAT LOG / EVENT FEED</h2>
+            <div class="panel-header-line"></div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+              <div class="combat-status">
+                <span class="pulse-indicator"></span> LIVE FEED
+              </div>
+              <button class="panel-toggle-btn" id="btn-toggle-combat">[-]</button>
+            </div>
+          </div>
+          <div class="panel-content combat-log-container" id="combat-log">
+            <div class="log-placeholder">WAITING FOR COMBAT EVENT DATA...</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Panel: Sidebar for Dropped Widgets -->
+      <section class="hud-panel right-panel empty" id="right-sidebar-panel">
+        <div class="panel-header">
+          <h2>WIDGETS</h2>
+          <div class="panel-header-line"></div>
+        </div>
+        <div class="panel-content sidebar-right drag-drop-zone" id="drop-zone-right-sidebar"></div>
+      </section>
+    </main>
+
+    <!-- Bottom Audio / System Bar -->
+    <footer class="hud-footer">
+      <div class="footer-block sidebar-footer" style="display: flex; align-items: center; gap: 10px; border: none; background: transparent; padding: 0; margin: 0; height: 100%;">
+        <div class="user-profile" style="display: flex; align-items: center; gap: 8px;">
+          <span class="user-avatar" style="width: 18px; height: 18px; border-radius: 50%; background: var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 6px; font-weight: bold; border: 1px solid var(--color-text-main); text-shadow: 0 0 5px var(--color-text-main); box-shadow: 0 0 5px var(--color-border);">PILOT</span>
+          <span class="user-name" style="font-family: var(--font-display); font-size: 11px; font-weight: bold; color: #fff;">STANDBY</span>
+          <span class="user-status" style="font-size: 9px; color: var(--color-text-main); font-weight: bold; text-shadow: 0 0 3px var(--color-text-main); display: flex; align-items: center; gap: 4px;"><span class="status-dot online" style="width: 5px; height: 5px; border-radius: 50%; background: var(--color-text-main); box-shadow: 0 0 5px var(--color-text-main); display: inline-block;"></span>ONLINE</span>
+        </div>
+        <button id="btn-settings" class="sidebar-settings-btn" title="Open Settings" style="width: 22px; height: 22px; border-radius: 4px; padding: 0;">
+          <svg viewBox="0 0 24 24" width="12" height="12">
+            <path fill="currentColor"
+              d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" />
+          </svg>
+        </button>
+        <button id="btn-open-hud" class="sidebar-settings-btn" title="Open Instrument HUD (Multi-Monitor)" style="width: 22px; height: 22px; border-radius: 4px; padding: 0; margin-left: 5px; display: none;">
+          <svg viewBox="0 0 24 24" width="12" height="12">
+            <path fill="currentColor" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="footer-block right" style="font-size: 9px; opacity: 0.7;">WT-TACTICAL MAP (UNOFFICIAL)</div>
+    </footer>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>SYSTEM CONFIGURATION</h2>
+        <button id="btn-close-settings" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="settings-tab-btn active" data-tab="tab-general">GENERAL</button>
+        <button class="settings-tab-btn" data-tab="tab-hotkeys">HOTKEYS</button>
+        <button class="settings-tab-btn" data-tab="tab-panels">HUD PANELS</button>
+        <button class="settings-tab-btn" data-tab="tab-telemetry">TELEMETRY</button>
+      </div>
+      <div class="modal-body">
+        <!-- Tab: General -->
+        <div id="tab-general" class="settings-tab-content active">
+          <!-- Section: Themes -->
+          <div class="settings-section">
+            <h4>INTERFACE COLOR THEME</h4>
+            <div class="theme-grid">
+              <div class="theme-option active" data-theme="cyan" style="border-color: #00ffc4;">
+                <span class="theme-preview" style="background-color: #00ffc4;"></span>
+                <span>CYBER CYAN</span>
+              </div>
+              <div class="theme-option" data-theme="green" style="border-color: #39ff14;">
+                <span class="theme-preview" style="background-color: #39ff14;"></span>
+                <span>CLASSIC RADAR</span>
+              </div>
+              <div class="theme-option" data-theme="amber" style="border-color: #ffaa00;">
+                <span class="theme-preview" style="background-color: #ffaa00;"></span>
+                <span>RETRO AMBER</span>
+              </div>
+              <div class="theme-option" data-theme="red" style="border-color: #ff3366;">
+                <span class="theme-preview" style="background-color: #ff3366;"></span>
+                <span>RED ALERT</span>
+              </div>
+              <div class="theme-option" data-theme="stealth" style="border-color: #ffffff;">
+                <span class="theme-preview" style="background-color: #ffffff;"></span>
+                <span>STEALTH WHITE</span>
+              </div>
+              <div class="theme-option" data-theme="blue" style="border-color: #0066ff;">
+                <span class="theme-preview" style="background-color: #0066ff;"></span>
+                <span>ABYSS BLUE</span>
+              </div>
+              <div class="theme-option" data-theme="purple" style="border-color: #d300ff;">
+                <span class="theme-preview" style="background-color: #d300ff;"></span>
+                <span>PLASMA PURPLE</span>
+              </div>
+              <div class="theme-option" data-theme="forest" style="border-color: #7a9a60;">
+                <span class="theme-preview" style="background-color: #7a9a60;"></span>
+                <span>FOREST COMMANDO</span>
+              </div>
+              <div class="theme-option" data-theme="warthunder" style="border-color: #788868;">
+                <span class="theme-preview" style="background-color: #788868;"></span>
+                <span>WAR THUNDER</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Symbol Themes -->
+          <div class="settings-section" style="margin-top: 20px; border-top: 1px solid rgba(0, 255, 196, 0.1); padding-top: 15px;">
+            <h4>MAP SYMBOL THEME</h4>
+            <div class="symbol-theme-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+              <div class="symbol-option active" data-symbol="standard" style="border: 1px solid var(--color-border); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>DEFAULT VECTOR</span>
+              </div>
+              <div class="symbol-option" data-symbol="default_wt" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>DEFAULT WT</span>
+              </div>
+              <div class="symbol-option" data-symbol="modern" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>MODERN HUD</span>
+              </div>
+              <div class="symbol-option" data-symbol="arcade" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>RETRO ARCADE</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Structural Themes -->
+          <div class="settings-section" style="margin-top: 20px; border-top: 1px solid rgba(0, 255, 196, 0.1); padding-top: 15px;">
+            <h4>HUD STRUCTURAL THEME</h4>
+            <div class="struct-theme-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px;">
+              <div class="struct-option active" data-struct="cyber" style="border: 1px solid var(--color-border); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>CYBER SCI-FI</span>
+              </div>
+              <div class="struct-option" data-struct="tactical" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>MILITARY STEALTH</span>
+              </div>
+              <div class="struct-option" data-struct="retro" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>RETRO CRT</span>
+              </div>
+              <div class="struct-option" data-struct="steampunk" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>STEAMPUNK COCKPIT</span>
+              </div>
+              <div class="struct-option" data-struct="xeno" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>XENO BIOMECH</span>
+              </div>
+              <div class="struct-option" data-struct="warthunder" style="border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-family: var(--font-mono); font-size: 9px;">
+                <span>WAR THUNDER</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Map Display Settings -->
+          <div class="settings-section" style="margin-top: 20px; border-top: 1px solid rgba(0, 255, 196, 0.1); padding-top: 15px;">
+            <h4>MAP DISPLAY SETTINGS</h4>
+            <div class="panel-visibility-grid" style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 10px;">
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-show-speeds" checked>
+                <span class="checkmark"></span>
+                SHOW AIRCRAFT SPEEDS ON MAP
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-show-fighters" checked>
+                <span class="checkmark"></span>
+                SHOW FIGHTER PLANES ON MAP
+              </label>
+              <div style="grid-column: span 2; margin-top: 10px; border-top: 1px solid rgba(0, 240, 255, 0.1); padding-top: 12px; margin-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-size: 10px; color: var(--color-text-main); font-weight: bold; letter-spacing: 0.5px; display: block; margin-bottom: 8px;">COCKPIT AUDIO & VOICE WARNING SYSTEM</span>
+                
+                <table class="alert-settings-table" style="width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-mono); font-size: 9px; color: var(--color-text-main);">
+                  <thead>
+                    <tr style="border-bottom: 1px solid rgba(0, 240, 255, 0.2); height: 22px;">
+                      <th style="padding-left: 5px; color: var(--color-text-dim);">ALERT / WARNING TYPE</th>
+                      <th style="text-align: center; color: var(--color-text-dim); width: 80px;">SOUND</th>
+                      <th style="text-align: center; color: var(--color-text-dim); width: 80px;">VOICE (TTS)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="border-bottom: 1px solid rgba(0, 240, 255, 0.05); height: 26px;">
+                      <td style="padding-left: 5px; font-weight: bold;">FUEL QUANTITY (LOW & MID)</td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-sound-fuel" checked></td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-tts-fuel" checked></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(0, 240, 255, 0.05); height: 26px;">
+                      <td style="padding-left: 5px; font-weight: bold;">HOSTILE MERGE (TAIL/FRONT)</td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-sound-merge" checked></td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-tts-merge" checked></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(0, 240, 255, 0.05); height: 26px;">
+                      <td style="padding-left: 5px; font-weight: bold;">RADAR LOCK-ON (WARNING LOCK)</td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-sound-lock" checked></td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-tts-lock" checked></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(0, 240, 255, 0.05); height: 26px;">
+                      <td style="padding-left: 5px; font-weight: bold;">ENGINE OVERHEAT (REDLINE TEMP)</td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-sound-overheat" checked></td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-tts-overheat" checked></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(0, 240, 255, 0.05); height: 26px;">
+                      <td style="padding-left: 5px; font-weight: bold;">ENGINE FAILURE (SHUTDOWN)</td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-sound-failure" checked></td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-tts-failure" checked></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(0, 240, 255, 0.05); height: 26px;">
+                      <td style="padding-left: 5px; font-weight: bold;">GROUND PROXIMITY (GPWS PULL UP)</td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-sound-gpws" checked></td>
+                      <td style="text-align: center;"><input type="checkbox" id="chk-alert-tts-gpws" checked></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px; grid-column: span 2; margin-top: 5px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">TTS COCKPIT ANNOUNCER VOICE</span>
+                <select id="sel-cockpit-voice" style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; transition: border-color 0.2s ease;">
+                  <option value="">(Loading System Voices...)</option>
+                </select>
+                <p style="font-family: var(--font-mono); font-size: 8px; color: var(--color-text-dim); margin-top: 2px; line-height: 1.3; margin-bottom: 8px;">
+                  Hinweis: Falls keine englische Stimme gelistet ist, installiere eine englische Stimme (z.B. Microsoft David/Zira) in den Windows-Einstellungen unter "Zeit und Sprache" -> "Sprachausgabe" -> "Stimmen hinzufügen".
+                </p>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px; grid-column: span 2; margin-top: 5px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">THREAT ALERT VISUAL STYLE</span>
+                <select id="sel-threat-style" style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; transition: border-color 0.2s ease;">
+                  <option value="both">BOTH BANNER & BORDER GLOW</option>
+                  <option value="banner">FULL BANNER ONLY</option>
+                  <option value="border">BORDER GLOW ONLY (SUBTLE)</option>
+                  <option value="none">NONE (OFF)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Hotkeys -->
+        <div id="tab-hotkeys" class="settings-tab-content">
+          <!-- Section: Global Hotkeys Settings -->
+          <div id="section-global-hotkeys" class="settings-section" style="display: none;">
+            <h4>GLOBAL SYSTEM HOTKEYS (ELECTRON ONLY)</h4>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+              <!-- Zoom In -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">ZOOM IN (MAP / HUD)</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="ipt-hotkey-zoom-in" placeholder="Record Keyboard..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                  <input type="text" id="ipt-joy-zoom-in" placeholder="Record HOTAS Button..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                </div>
+              </div>
+
+              <!-- Zoom Out -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">ZOOM OUT / RESET</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="ipt-hotkey-zoom-out" placeholder="Record Keyboard..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                  <input type="text" id="ipt-joy-zoom-out" placeholder="Record HOTAS Button..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                </div>
+              </div>
+
+              <!-- Toggle Air -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">TOGGLE AIR TARGETS</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="ipt-hotkey-toggle-air" placeholder="Record Keyboard..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                  <input type="text" id="ipt-joy-toggle-air" placeholder="Record HOTAS Button..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                </div>
+              </div>
+
+              <!-- Toggle Ground -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">TOGGLE GROUND TARGETS</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="ipt-hotkey-toggle-ground" placeholder="Record Keyboard..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                  <input type="text" id="ipt-joy-toggle-ground" placeholder="Record HOTAS Button..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                </div>
+              </div>
+
+              <!-- Toggle Naval -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">TOGGLE NAVAL TARGETS</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="ipt-hotkey-toggle-naval" placeholder="Record Keyboard..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                  <input type="text" id="ipt-joy-toggle-naval" placeholder="Record HOTAS Button..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                </div>
+              </div>
+
+              <!-- Toggle Bases -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">TOGGLE BASES & ZONES</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="ipt-hotkey-toggle-bases" placeholder="Record Keyboard..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                  <input type="text" id="ipt-joy-toggle-bases" placeholder="Record HOTAS Button..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                </div>
+              </div>
+
+              <!-- Toggle Fullscreen -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); letter-spacing: 0.5px;">TOGGLE MAP FULLSCREEN</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="ipt-hotkey-toggle-fullscreen" placeholder="Record Keyboard..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                  <input type="text" id="ipt-joy-toggle-fullscreen" placeholder="Record HOTAS Button..." readonly style="background: rgba(3, 7, 13, 0.6); border: 1px solid var(--color-border); color: var(--color-text-main); font-family: var(--font-mono); font-size: 10px; padding: 6px; border-radius: 4px; width: 100%; outline: none; box-sizing: border-box; text-align: center; cursor: pointer; transition: border-color 0.2s ease;">
+                </div>
+              </div>
+            </div>
+            <p style="font-family: var(--font-mono); font-size: 8px; color: var(--color-text-dim); margin-top: 12px; line-height: 1.3;">
+              Click inside an input and press your key combination (e.g. Alt+1) to record it. Works globally in the background during matches.
+            </p>
+          </div>
+          <!-- Web Browser Fallback Message -->
+          <div id="section-web-hotkeys-fallback" style="display: block; font-family: var(--font-mono); font-size: 10px; color: var(--color-text-dim); text-align: center; padding: 20px 10px; line-height: 1.4;">
+            Global background hotkeys require the native Electron desktop application wrapper. They are not supported in standard web browsers.
+          </div>
+        </div>
+
+        <!-- Tab: HUD Panels -->
+        <div id="tab-panels" class="settings-tab-content">
+          <!-- Section: Panel Visibility Configuration -->
+          <div class="settings-section">
+            <h4>HUD PANEL CONFIGURATION</h4>
+            <div class="panel-visibility-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-panel-stats" checked>
+                <span class="checkmark"></span>
+                FLIGHT TELEMETRY (STATS)
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-panel-gyro" checked>
+                <span class="checkmark"></span>
+                ATTITUDE GYRO (2D)
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-panel-gyro3d" checked>
+                <span class="checkmark"></span>
+                3D ATTITUDE DISPLAY
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-panel-fuel" checked>
+                <span class="checkmark"></span>
+                FUEL DIAL GAUGE
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-panel-mech" checked>
+                <span class="checkmark"></span>
+                HYDRAULICS INDICATOR
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-panel-engine" checked>
+                <span class="checkmark"></span>
+                ENGINE TELEMETRY
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-panel-radar" checked>
+                <span class="checkmark"></span>
+                RADAR TELEMETRY
+              </label>
+              <label class="hud-checkbox" style="grid-column: span 2;">
+                <input type="checkbox" id="chk-panel-compass" checked>
+                <span class="checkmark"></span>
+                NAVIGATION COMPASS
+              </label>
+              <label class="hud-checkbox" style="grid-column: span 2;">
+                <input type="checkbox" id="chk-panel-combat" checked>
+                <span class="checkmark"></span>
+                TACTICAL COMBAT LOG
+              </label>
+            </div>
+          </div>
+
+          <!-- Section: Compass Targets Visibility Configuration -->
+          <div class="settings-section" style="margin-top: 20px; border-top: 1px solid rgba(0, 240, 255, 0.1); padding-top: 15px;">
+            <h4>COMPASS DISPLAY TARGETS</h4>
+            <div class="panel-visibility-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-compass-threats" checked>
+                <span class="checkmark"></span>
+                ACTIVE THREATS / LOCKS
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-compass-enemies" checked>
+                <span class="checkmark"></span>
+                ENEMY AIRCRAFT
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-compass-friendlies" checked>
+                <span class="checkmark"></span>
+                FRIENDLY AIRCRAFT
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-compass-zones" checked>
+                <span class="checkmark"></span>
+                CAPTURE ZONES
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-compass-bases" checked>
+                <span class="checkmark"></span>
+                BOMBING BASES
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-compass-airfields" checked>
+                <span class="checkmark"></span>
+                AIRFIELDS / RUNWAYS
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Telemetry -->
+        <div id="tab-telemetry" class="settings-tab-content">
+          <!-- Section: Sub-Element Indicator Visibility Configuration -->
+          <div class="settings-section">
+            <h4>HUD TELEMETRY STATS VISIBILITY</h4>
+            <div class="panel-visibility-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-spd" checked>
+                <span class="checkmark"></span>
+                SPD (IAS) CARD
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-tas" checked>
+                <span class="checkmark"></span>
+                SPD (TAS) CARD
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-alt" checked>
+                <span class="checkmark"></span>
+                ALT (MSL) CARD
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-climb" checked>
+                <span class="checkmark"></span>
+                CLIMB RATE CARD
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-thr" checked>
+                <span class="checkmark"></span>
+                THROTTLE % CARD
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-gload" checked>
+                <span class="checkmark"></span>
+                G-FORCE LOAD CARD
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-aoa" checked>
+                <span class="checkmark"></span>
+                ANGLE OF ATTACK CARD
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-mach" checked>
+                <span class="checkmark"></span>
+                MACH SPEED CARD
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-section" style="margin-top: 20px; border-top: 1px solid rgba(0, 255, 196, 0.1); padding-top: 15px;">
+            <h4>HYDRAULICS & ENGINE INDICATORS</h4>
+            <div class="panel-visibility-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-gear" checked>
+                <span class="checkmark"></span>
+                LANDING GEAR STATUS
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-flaps" checked>
+                <span class="checkmark"></span>
+                FLAPS DEPLOYMENT
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-airbrake" checked>
+                <span class="checkmark"></span>
+                AIRBRAKE ENGAGEMENT
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-rpm" checked>
+                <span class="checkmark"></span>
+                ENGINE RPM INDICATOR
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-oil" checked>
+                <span class="checkmark"></span>
+                OIL TEMP INDICATOR
+              </label>
+              <label class="hud-checkbox">
+                <input type="checkbox" id="chk-sub-water" checked>
+                <span class="checkmark"></span>
+                H2O TEMP INDICATOR
+              </label>
+              <label class="hud-checkbox" style="grid-column: span 2;">
+                <input type="checkbox" id="chk-sub-fuel" checked>
+                <span class="checkmark"></span>
+                FUEL WEIGHT QUANTITY
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-save-settings" class="hud-btn active">APPLY CHANGES</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
