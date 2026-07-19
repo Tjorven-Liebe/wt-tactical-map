@@ -33,6 +33,10 @@ Ein leichtgewichtiges, Desktop-basiertes Overlay für War Thunder, das Live-Tele
 * **Globale HOTAS-Hotkeys:** Direkte Erkennung von Hardware-Eingaben (Flight Sticks und Throttles). Die Hotkeys fangen Steuerbefehle global ab und funktionieren zuverlässig im Hintergrund, während der War Thunder-Client im Vordergrund fokussiert ist.
 
 ---
+## Showcase
+[![Alternativtext](https://img.youtube.com/vi/WbUkS62R-4E/0.jpg)](https://www.youtube.com/watch?v=WbUkS62R-4E)
+[![Video ansehen](https://img.youtube.com/vi/7fFaqIdwDSc/0.jpg)](https://www.youtube.com/watch?v=7fFaqIdwDSc)
+---
 
 ## Technische Funktionsweise
 
