@@ -14,9 +14,3 @@ updates:
         update-types:
           - "minor"
           - "patch"
-
-  # GitHub Actions updates (for build, test, and release workflows)
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
