@@ -3,7 +3,7 @@ const http = require('http');
 const path = require('path');
 
 const app = express();
-const PORT = 811;
+const PORT = process.env.PORT || 8110;
 const WT_BASE_URL = 'http://127.0.0.1:8111';
 
 // Serve static files from the 'public' directory (using absolute path for packaged Electron compatibility)

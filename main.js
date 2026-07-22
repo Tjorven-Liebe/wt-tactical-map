@@ -57,7 +57,7 @@ function createWindow() {
     autoHideMenuBar: true
   });
 
-  const targetUrl = 'http://localhost:811';
+  const targetUrl = 'http://localhost:8110';
 
   // Funktion versucht die Seite zyklisch zu laden, bis der Server bereit ist
   const loadWithRetry = () => {
@@ -103,7 +103,7 @@ ipcMain.on('register-zoom-shortcut', (event, { shortcutZoomIn, shortcutZoomOut, 
   const registerKey = (keyName, shortcut, triggerChannel) => {
     if (!shortcut) return;
     try {
-      globalShortcut.register(shortcut, () => {
+      const isRegistered = globalShortcut.register(shortcut, () => {
         if (mainWindow) {
           if (triggerChannel === 'trigger-toggle-fullscreen') {
             handleToggleFullscreen();
@@ -112,7 +112,11 @@ ipcMain.on('register-zoom-shortcut', (event, { shortcutZoomIn, shortcutZoomOut, 
           }
         }
       });
-      console.log(`Global shortcut registered: ${keyName} -> ${shortcut}`);
+      if (isRegistered) {
+        console.log(`Global shortcut registered: ${keyName} -> ${shortcut}`);
+      } else {
+        console.warn(`Global shortcut registration failed (may be blocked by OS or in use): ${keyName} -> ${shortcut}`);
+      }
     } catch (err) {
       console.error(`Failed to register global shortcut ${keyName} (${shortcut}):`, err);
     }
@@ -154,18 +158,22 @@ ipcMain.on('open-secondary-window', () => {
     autoHideMenuBar: true
   });
 
-  secondaryWindow.loadURL('http://localhost:811/hud.html');
+  secondaryWindow.loadURL('http://localhost:8110/hud.html');
 
   secondaryWindow.on('closed', () => {
     secondaryWindow = null;
   });
 });
 
-// Spawn background PowerShell joystick polling process
+// Spawn background PowerShell joystick polling process (Windows only)
 const { spawn } = require('child_process');
 let joyProcess = null;
 
 function startJoystickPolling() {
+  if (process.platform !== 'win32') {
+    console.log('Joystick polling via PowerShell is omitted on non-Windows OS.');
+    return;
+  }
   const scriptPath = path.join(__dirname, 'joy_poll.ps1');
   joyProcess = spawn('powershell.exe', [
     '-ExecutionPolicy', 'Bypass',

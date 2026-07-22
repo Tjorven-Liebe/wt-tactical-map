@@ -3186,25 +3186,92 @@ async function init() {
     }
   });
 
-  // Global browser Alt+1..4 keydown listener for fast map target filtering
+  // Helper function to match browser KeyboardEvent against Electron accelerator string
+  function isHotkeyMatch(event, shortcutString) {
+    if (!shortcutString || typeof shortcutString !== 'string') return false;
+    const parts = shortcutString.split('+').map(s => s.trim());
+    if (parts.length === 0) return false;
+
+    const reqCtrl = parts.some(p => ['CommandOrControl', 'CmdOrCtrl', 'Control', 'Ctrl'].includes(p));
+    const reqAlt = parts.some(p => ['Alt', 'Option'].includes(p));
+    const reqShift = parts.some(p => p === 'Shift');
+    const reqMeta = parts.some(p => ['Super', 'Meta'].includes(p));
+
+    const hasCtrl = reqCtrl ? (event.ctrlKey || event.metaKey) : (!event.ctrlKey && !event.metaKey);
+    const hasAlt = reqAlt ? event.altKey : !event.altKey;
+    const hasShift = reqShift ? event.shiftKey : !event.shiftKey;
+
+    if (!hasCtrl || !hasAlt || !hasShift) return false;
+
+    const keyParts = parts.filter(p => !['CommandOrControl', 'CmdOrCtrl', 'Control', 'Ctrl', 'Alt', 'Option', 'Shift', 'Super', 'Meta'].includes(p));
+    if (keyParts.length === 0) return false;
+    const targetKey = keyParts[0].toUpperCase();
+
+    let eventKey = event.key ? event.key.toUpperCase() : '';
+    let eventCode = event.code || '';
+
+    if (eventCode.startsWith('Key')) eventCode = eventCode.replace('Key', '');
+    else if (eventCode.startsWith('Digit')) eventCode = eventCode.replace('Digit', '');
+    else if (eventCode === 'ArrowUp') eventCode = 'UP';
+    else if (eventCode === 'ArrowDown') eventCode = 'DOWN';
+    else if (eventCode === 'ArrowLeft') eventCode = 'LEFT';
+    else if (eventCode === 'ArrowRight') eventCode = 'RIGHT';
+    else if (eventCode === 'Equal' || eventCode === 'NumpadAdd') eventCode = 'PLUS';
+    else if (eventCode === 'Minus' || eventCode === 'NumpadSubtract') eventCode = 'MINUS';
+    else if (eventCode === 'Space') eventCode = 'SPACE';
+
+    if (targetKey === 'UP' && (eventKey === 'ARROWUP' || eventCode === 'UP')) return true;
+    if (targetKey === 'DOWN' && (eventKey === 'ARROWDOWN' || eventCode === 'DOWN')) return true;
+    if (targetKey === 'LEFT' && (eventKey === 'ARROWLEFT' || eventCode === 'LEFT')) return true;
+    if (targetKey === 'RIGHT' && (eventKey === 'ARROWRIGHT' || eventCode === 'RIGHT')) return true;
+    if (targetKey === 'PLUS' && (eventKey === '+' || eventCode === 'PLUS')) return true;
+    if (targetKey === 'MINUS' && (eventKey === '-' || eventCode === 'MINUS')) return true;
+    if (targetKey === 'SPACE' && (eventKey === ' ' || eventCode === 'SPACE')) return true;
+
+    return eventKey === targetKey || eventCode.toUpperCase() === targetKey;
+  }
+
+  // Dynamic window keydown listener for customizable map hotkeys
   window.addEventListener('keydown', (e) => {
     // Only intercept when not typing in text/hotkey recorder fields
     if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
       return;
     }
-    if (e.altKey && !e.ctrlKey && !e.shiftKey) {
-      if (e.key === '1') {
-        e.preventDefault();
-        document.getElementById('btn-toggle-type-air')?.click();
-      } else if (e.key === '2') {
-        e.preventDefault();
-        document.getElementById('btn-toggle-type-ground')?.click();
-      } else if (e.key === '3') {
-        e.preventDefault();
-        document.getElementById('btn-toggle-type-naval')?.click();
-      } else if (e.key === '4') {
-        e.preventDefault();
-        document.getElementById('btn-toggle-type-bases')?.click();
+
+    const zoomInShortcut = getCookie('shortcut_zoom_in') || 'CommandOrControl+Up';
+    const zoomOutShortcut = getCookie('shortcut_zoom_out') || 'CommandOrControl+Down';
+    const toggleAirShortcut = getCookie('shortcut_toggle_air') || 'Alt+1';
+    const toggleGroundShortcut = getCookie('shortcut_toggle_ground') || 'Alt+2';
+    const toggleNavalShortcut = getCookie('shortcut_toggle_naval') || 'Alt+3';
+    const toggleBasesShortcut = getCookie('shortcut_toggle_bases') || 'Alt+4';
+    const toggleFullscreenShortcut = getCookie('shortcut_toggle_fullscreen') || 'F11';
+
+    if (isHotkeyMatch(e, zoomInShortcut)) {
+      e.preventDefault();
+      zoom = Math.min(50.0, zoom * 1.15);
+      drawMap();
+    } else if (isHotkeyMatch(e, zoomOutShortcut)) {
+      e.preventDefault();
+      zoom = Math.max(1.0, zoom / 1.15);
+      drawMap();
+    } else if (isHotkeyMatch(e, toggleAirShortcut)) {
+      e.preventDefault();
+      document.getElementById('btn-toggle-type-air')?.click();
+    } else if (isHotkeyMatch(e, toggleGroundShortcut)) {
+      e.preventDefault();
+      document.getElementById('btn-toggle-type-ground')?.click();
+    } else if (isHotkeyMatch(e, toggleNavalShortcut)) {
+      e.preventDefault();
+      document.getElementById('btn-toggle-type-naval')?.click();
+    } else if (isHotkeyMatch(e, toggleBasesShortcut)) {
+      e.preventDefault();
+      document.getElementById('btn-toggle-type-bases')?.click();
+    } else if (isHotkeyMatch(e, toggleFullscreenShortcut)) {
+      e.preventDefault();
+      if (window.electronAPI && window.electronAPI.isElectron) {
+        window.electronAPI.toggleFullscreen();
+      } else {
+        toggleFullscreen();
       }
     }
   });
@@ -3566,48 +3633,48 @@ if (btnSaveSettings && settingsModal) {
     savePanelVisibility();
 
     // Save global hotkeys
+    const zoomInVal = document.getElementById('ipt-hotkey-zoom-in')?.value || '';
+    const zoomOutVal = document.getElementById('ipt-hotkey-zoom-out')?.value || '';
+    const toggleAirVal = document.getElementById('ipt-hotkey-toggle-air')?.value || '';
+    const toggleGroundVal = document.getElementById('ipt-hotkey-toggle-ground')?.value || '';
+    const toggleNavalVal = document.getElementById('ipt-hotkey-toggle-naval')?.value || '';
+    const toggleBasesVal = document.getElementById('ipt-hotkey-toggle-bases')?.value || '';
+    const toggleFullscreenVal = document.getElementById('ipt-hotkey-toggle-fullscreen')?.value || '';
+
+    setCookie('shortcut_zoom_in', zoomInVal, 365);
+    setCookie('shortcut_zoom_out', zoomOutVal, 365);
+    setCookie('shortcut_toggle_air', toggleAirVal, 365);
+    setCookie('shortcut_toggle_ground', toggleGroundVal, 365);
+    setCookie('shortcut_toggle_naval', toggleNavalVal, 365);
+    setCookie('shortcut_toggle_bases', toggleBasesVal, 365);
+    setCookie('shortcut_toggle_fullscreen', toggleFullscreenVal, 365);
+
+    // Save joystick configurations
+    const joyItems = [
+      { id: 'ipt-joy-zoom-in' },
+      { id: 'ipt-joy-zoom-out' },
+      { id: 'ipt-joy-toggle-air' },
+      { id: 'ipt-joy-toggle-ground' },
+      { id: 'ipt-joy-toggle-naval' },
+      { id: 'ipt-joy-toggle-bases' },
+      { id: 'ipt-joy-toggle-fullscreen' }
+    ];
+
+    joyItems.forEach(item => {
+      const el = document.getElementById(item.id);
+      if (el) {
+        const val = el.value;
+        const joyName = el.getAttribute('data-joy-name') || '';
+        const joyBtn = el.getAttribute('data-joy-button') || '';
+
+        setCookie(item.id.replace('ipt-', 'shortcut_'), val, 365);
+        setCookie(item.id.replace('ipt-', 'joy_name_'), joyName, 365);
+        setCookie(item.id.replace('ipt-', 'joy_btn_'), joyBtn, 365);
+      }
+    });
+
     const isElectron = window.electronAPI && window.electronAPI.isElectron;
     if (isElectron) {
-      const zoomInVal = document.getElementById('ipt-hotkey-zoom-in').value;
-      const zoomOutVal = document.getElementById('ipt-hotkey-zoom-out').value;
-      const toggleAirVal = document.getElementById('ipt-hotkey-toggle-air').value;
-      const toggleGroundVal = document.getElementById('ipt-hotkey-toggle-ground').value;
-      const toggleNavalVal = document.getElementById('ipt-hotkey-toggle-naval').value;
-      const toggleBasesVal = document.getElementById('ipt-hotkey-toggle-bases').value;
-      const toggleFullscreenVal = document.getElementById('ipt-hotkey-toggle-fullscreen').value;
-
-      setCookie('shortcut_zoom_in', zoomInVal, 365);
-      setCookie('shortcut_zoom_out', zoomOutVal, 365);
-      setCookie('shortcut_toggle_air', toggleAirVal, 365);
-      setCookie('shortcut_toggle_ground', toggleGroundVal, 365);
-      setCookie('shortcut_toggle_naval', toggleNavalVal, 365);
-      setCookie('shortcut_toggle_bases', toggleBasesVal, 365);
-      setCookie('shortcut_toggle_fullscreen', toggleFullscreenVal, 365);
-
-      // Save joystick configurations
-      const joyItems = [
-        { id: 'ipt-joy-zoom-in' },
-        { id: 'ipt-joy-zoom-out' },
-        { id: 'ipt-joy-toggle-air' },
-        { id: 'ipt-joy-toggle-ground' },
-        { id: 'ipt-joy-toggle-naval' },
-        { id: 'ipt-joy-toggle-bases' },
-        { id: 'ipt-joy-toggle-fullscreen' }
-      ];
-
-      joyItems.forEach(item => {
-        const el = document.getElementById(item.id);
-        if (el) {
-          const val = el.value;
-          const joyName = el.getAttribute('data-joy-name') || '';
-          const joyBtn = el.getAttribute('data-joy-button') || '';
-          
-          setCookie(item.id.replace('ipt-', 'shortcut_'), val, 365);
-          setCookie(item.id.replace('ipt-', 'joy_name_'), joyName, 365);
-          setCookie(item.id.replace('ipt-', 'joy_btn_'), joyBtn, 365);
-        }
-      });
-
       window.electronAPI.registerZoomShortcut({
         shortcutZoomIn: zoomInVal,
         shortcutZoomOut: zoomOutVal,
@@ -4451,29 +4518,53 @@ function initGlobalHotkeys() {
       if (e.altKey) parts.push('Alt');
       if (e.shiftKey) parts.push('Shift');
 
-      let key = e.key;
-      if (key.length === 1) {
-        key = key.toUpperCase();
-      }
+      let key = '';
+      let code = e.code || '';
 
-      // Map arrow keys and common special keys to Electron accelerators
-      if (key === 'ArrowUp') key = 'Up';
-      else if (key === 'ArrowDown') key = 'Down';
-      else if (key === 'ArrowLeft') key = 'Left';
-      else if (key === 'ArrowRight') key = 'Right';
-      else if (key === ' ') key = 'Space';
-      else if (key === '+') key = 'Plus';
-      else if (key === '-') key = 'Minus';
-      else if (key === 'Enter') key = 'Enter';
-      else if (key === 'Escape') key = 'Escape';
-      else if (key === 'Tab') key = 'Tab';
-      else if (key === 'Backspace') key = 'Backspace';
-      else if (key === 'Delete') key = 'Delete';
-      else if (key === 'Insert') key = 'Insert';
-      else if (key === 'Home') key = 'Home';
-      else if (key === 'End') key = 'End';
-      else if (key === 'PageUp') key = 'PageUp';
-      else if (key === 'PageDown') key = 'PageDown';
+      if (code.startsWith('Key')) {
+        key = code.replace('Key', '');
+      } else if (code.startsWith('Digit')) {
+        key = code.replace('Digit', '');
+      } else if (code === 'ArrowUp') {
+        key = 'Up';
+      } else if (code === 'ArrowDown') {
+        key = 'Down';
+      } else if (code === 'ArrowLeft') {
+        key = 'Left';
+      } else if (code === 'ArrowRight') {
+        key = 'Right';
+      } else if (code === 'Space') {
+        key = 'Space';
+      } else if (code === 'Equal' || code === 'NumpadAdd') {
+        key = 'Plus';
+      } else if (code === 'Minus' || code === 'NumpadSubtract') {
+        key = 'Minus';
+      } else if (code === 'Enter') {
+        key = 'Enter';
+      } else if (code === 'Escape') {
+        key = 'Escape';
+      } else if (code === 'Tab') {
+        key = 'Tab';
+      } else if (code === 'Backspace') {
+        key = 'Backspace';
+      } else if (code === 'Delete') {
+        key = 'Delete';
+      } else if (code === 'Insert') {
+        key = 'Insert';
+      } else if (code === 'Home') {
+        key = 'Home';
+      } else if (code === 'End') {
+        key = 'End';
+      } else if (code === 'PageUp') {
+        key = 'PageUp';
+      } else if (code === 'PageDown') {
+        key = 'PageDown';
+      } else {
+        key = e.key;
+        if (key.length === 1) {
+          key = key.toUpperCase();
+        }
+      }
 
       const shortcutStr = parts.join('+');
       input.value = shortcutStr ? `${shortcutStr}+${key}` : key;
@@ -4545,11 +4636,21 @@ function initGlobalHotkeys() {
       resizeCanvas();
     });
 
-    // Register Joystick Event Listener
+    // Unified Joystick Event Handler & HTML5 Gamepad API Polling
     let joyZoomInInterval = null;
     let joyZoomOutInterval = null;
 
-    window.electronAPI.onJoyEvent((evt) => {
+    function isJoystickMatch(evtName, boundName) {
+      if (!evtName || !boundName) return false;
+      if (evtName === boundName) return true;
+      const fEvt = formatJoystickName(evtName).toLowerCase();
+      const fBound = formatJoystickName(boundName).toLowerCase();
+      if (fEvt === fBound) return true;
+      if (evtName.toLowerCase().includes(fBound) || boundName.toLowerCase().includes(fEvt)) return true;
+      return false;
+    }
+
+    function handleJoyEvent(evt) {
       const { event: type, name, button } = evt;
 
       if (activeJoyInput) {
@@ -4564,11 +4665,11 @@ function initGlobalHotkeys() {
       }
 
       // Trigger actions when modal is closed
-      if (!settingsModal.classList.contains('open')) {
+      if (settingsModal && !settingsModal.classList.contains('open')) {
         // Zoom In
         const boundInName = iptJoyZoomIn ? iptJoyZoomIn.getAttribute('data-joy-name') : null;
         const boundInBtn = iptJoyZoomIn ? iptJoyZoomIn.getAttribute('data-joy-button') : null;
-        if (name === boundInName && String(button) === String(boundInBtn)) {
+        if (isJoystickMatch(name, boundInName) && String(button) === String(boundInBtn)) {
           if (type === 'pressed') {
             if (!joyZoomInInterval) {
               zoom = Math.min(50.0, zoom * 1.15);
@@ -4589,7 +4690,7 @@ function initGlobalHotkeys() {
         // Zoom Out
         const boundOutName = iptJoyZoomOut ? iptJoyZoomOut.getAttribute('data-joy-name') : null;
         const boundOutBtn = iptJoyZoomOut ? iptJoyZoomOut.getAttribute('data-joy-button') : null;
-        if (name === boundOutName && String(button) === String(boundOutBtn)) {
+        if (isJoystickMatch(name, boundOutName) && String(button) === String(boundOutBtn)) {
           if (type === 'pressed') {
             if (!joyZoomOutInterval) {
               zoom = Math.max(1.0, zoom / 1.15);
@@ -4612,40 +4713,79 @@ function initGlobalHotkeys() {
           // Toggle Air
           const boundAirName = iptJoyToggleAir ? iptJoyToggleAir.getAttribute('data-joy-name') : null;
           const boundAirBtn = iptJoyToggleAir ? iptJoyToggleAir.getAttribute('data-joy-button') : null;
-          if (name === boundAirName && String(button) === String(boundAirBtn)) {
+          if (isJoystickMatch(name, boundAirName) && String(button) === String(boundAirBtn)) {
             document.getElementById('btn-toggle-type-air')?.click();
           }
 
           // Toggle Ground
           const boundGroundName = iptJoyToggleGround ? iptJoyToggleGround.getAttribute('data-joy-name') : null;
           const boundGroundBtn = iptJoyToggleGround ? iptJoyToggleGround.getAttribute('data-joy-button') : null;
-          if (name === boundGroundName && String(button) === String(boundGroundBtn)) {
+          if (isJoystickMatch(name, boundGroundName) && String(button) === String(boundGroundBtn)) {
             document.getElementById('btn-toggle-type-ground')?.click();
           }
 
           // Toggle Naval
           const boundNavalName = iptJoyToggleNaval ? iptJoyToggleNaval.getAttribute('data-joy-name') : null;
           const boundNavalBtn = iptJoyToggleNaval ? iptJoyToggleNaval.getAttribute('data-joy-button') : null;
-          if (name === boundNavalName && String(button) === String(boundNavalBtn)) {
+          if (isJoystickMatch(name, boundNavalName) && String(button) === String(boundNavalBtn)) {
             document.getElementById('btn-toggle-type-naval')?.click();
           }
 
           // Toggle Bases
           const boundBasesName = iptJoyToggleBases ? iptJoyToggleBases.getAttribute('data-joy-name') : null;
           const boundBasesBtn = iptJoyToggleBases ? iptJoyToggleBases.getAttribute('data-joy-button') : null;
-          if (name === boundBasesName && String(button) === String(boundBasesBtn)) {
+          if (isJoystickMatch(name, boundBasesName) && String(button) === String(boundBasesBtn)) {
             document.getElementById('btn-toggle-type-bases')?.click();
           }
 
           // Toggle Fullscreen
           const boundFsName = iptJoyToggleFullscreen ? iptJoyToggleFullscreen.getAttribute('data-joy-name') : null;
           const boundFsBtn = iptJoyToggleFullscreen ? iptJoyToggleFullscreen.getAttribute('data-joy-button') : null;
-          if (name === boundFsName && String(button) === String(boundFsBtn)) {
-            toggleFullscreen();
+          if (isJoystickMatch(name, boundFsName) && String(button) === String(boundFsBtn)) {
+            if (window.electronAPI && window.electronAPI.isElectron) {
+              window.electronAPI.toggleFullscreen();
+            } else {
+              toggleFullscreen();
+            }
           }
         }
       }
-    });
+    }
+
+    // HTML5 Gamepad API polling (works natively on Linux, Windows & macOS)
+    const previousGamepadState = {};
+    function pollGamepads() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : null;
+      if (!gamepads) return;
+
+      for (let g = 0; g < gamepads.length; g++) {
+        const gp = gamepads[g];
+        if (!gp) continue;
+
+        const gpName = gp.id || `Joystick ${gp.index + 1}`;
+        for (let b = 0; b < gp.buttons.length; b++) {
+          const btn = gp.buttons[b];
+          const isPressed = btn ? (btn.pressed || btn.value > 0.5) : false;
+          const stateKey = `${gp.index}_${b}`;
+          const wasPressed = previousGamepadState[stateKey] || false;
+
+          if (isPressed && !wasPressed) {
+            previousGamepadState[stateKey] = true;
+            handleJoyEvent({ event: 'pressed', name: gpName, button: b + 1 });
+          } else if (!isPressed && wasPressed) {
+            previousGamepadState[stateKey] = false;
+            handleJoyEvent({ event: 'released', name: gpName, button: b + 1 });
+          }
+        }
+      }
+    }
+    setInterval(pollGamepads, 20);
+
+    if (isElectron && window.electronAPI && window.electronAPI.onJoyEvent) {
+      window.electronAPI.onJoyEvent((evt) => {
+        handleJoyEvent(evt);
+      });
+    }
   }
 }
 
